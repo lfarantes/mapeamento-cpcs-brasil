@@ -5,8 +5,7 @@ import Dashboard from './components/Dashboard';
 import RecordList from './components/RecordList';
 import AuditTrail from './components/AuditTrail';
 import DataInsertion from './components/DataInsertion';
-import ApiSettings from './components/ApiSettings';
-import { LayoutGrid, ClipboardEdit, ClipboardCheck, History, Database, UserSquare2, Shield, LogOut, ChevronDown, Settings } from 'lucide-react';
+import { LayoutGrid, ClipboardEdit, ClipboardCheck, History, Database, UserSquare2, Shield, LogOut, ChevronDown } from 'lucide-react';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
@@ -193,19 +192,6 @@ export default function App() {
             </button>
           )}
 
-          {/* REDCap API Settings Tab */}
-          <button
-            onClick={() => handleNavigate('settings')}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all ${
-              currentTab === 'settings'
-                ? 'bg-blue-600/20 text-blue-400 border border-blue-500/20 font-extrabold shadow-inner'
-                : 'text-slate-400 hover:bg-slate-800/50 hover:text-white border border-transparent'
-            }`}
-          >
-            <Settings size={15} className="shrink-0" />
-            Configurações da API
-          </button>
-
           {/* Active Profile Permission Summary */}
           <div className="pt-6 border-t border-slate-800 mt-6 px-3">
             <span className="text-[9px] font-black uppercase text-slate-500 block tracking-wider mb-2.5">Permissões de Perfil</span>
@@ -274,20 +260,24 @@ export default function App() {
               {currentTab === 'records' && 'Centros de Pesquisa Clínica'}
               {currentTab === 'insert' && (editingRecordId ? 'Editar Centro de Pesquisa' : 'Inserir Novo Centro')}
               {currentTab === 'audit' && 'Trilha de Auditoria'}
-              {currentTab === 'settings' && 'Configurações de Integração REDCap'}
             </h1>
             <p className="text-[10px] sm:text-[11px] text-slate-500 leading-none mt-1 font-bold">
               {currentTab === 'dashboard' && 'Métricas unificadas em tempo real'}
               {currentTab === 'records' && 'Status de preenchimento do dicionário REDCap'}
               {currentTab === 'insert' && 'Registro de conformidade e auditoria ativo'}
               {currentTab === 'audit' && 'Registro e rastreabilidade total de conformidade GCP'}
-              {currentTab === 'settings' && 'Definição de parâmetros de API e chaves de acesso'}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-[9px] font-bold font-mono bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-1 rounded-md uppercase tracking-wider hidden sm:inline-block">
-              REDCap API Ativa
-            </span>
+            {((import.meta as any).env?.VITE_REDCAP_API_TOKEN) ? (
+              <span className="text-[9px] font-bold font-mono bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-1 rounded-md uppercase tracking-wider hidden sm:inline-block">
+                REDCap API Conectada
+              </span>
+            ) : (
+              <span className="text-[9px] font-bold font-mono bg-amber-50 text-amber-700 border border-amber-100 px-2 py-1 rounded-md uppercase tracking-wider hidden sm:inline-block">
+                REDCap Offline (Configurar .env)
+              </span>
+            )}
           </div>
         </header>
 
@@ -325,12 +315,6 @@ export default function App() {
             <AuditTrail 
               auditLogs={auditLogs} 
               user={currentUser} 
-            />
-          )}
-
-          {currentTab === 'settings' && (
-            <ApiSettings 
-              onNavigate={handleNavigate}
             />
           )}
         </main>

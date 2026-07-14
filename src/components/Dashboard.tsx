@@ -83,8 +83,17 @@ export default function Dashboard({ records, auditLogs, user, onNavigate }: Dash
           </p>
         </div>
         <div className="flex items-center gap-3 bg-[#F8FAFC] px-4 py-2.5 rounded-xl border border-slate-100 shrink-0">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">REDCap Conectado</span>
+          {((import.meta as any).env?.VITE_REDCAP_API_TOKEN) ? (
+            <>
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">REDCap Conectado</span>
+            </>
+          ) : (
+            <>
+              <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">REDCap Offline</span>
+            </>
+          )}
         </div>
       </div>
 
