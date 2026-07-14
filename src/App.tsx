@@ -5,7 +5,8 @@ import Dashboard from './components/Dashboard';
 import RecordList from './components/RecordList';
 import AuditTrail from './components/AuditTrail';
 import DataInsertion from './components/DataInsertion';
-import { LayoutGrid, ClipboardEdit, ClipboardCheck, History, Database, UserSquare2, Shield, LogOut, ChevronDown, ArrowLeft } from 'lucide-react';
+import { LayoutGrid, ClipboardEdit, ClipboardCheck, History, Database, UserSquare2, Shield, LogOut, ChevronDown, ArrowLeft, Lock, Unlock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<string>('dashboard');
@@ -14,6 +15,13 @@ export default function App() {
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [accessMode, setAccessMode] = useState<'portal' | 'public_form' | null>(null);
   const [formSubmitted, setFormSubmitted] = useState<boolean>(false);
+  const [showPasscodeModal, setShowPasscodeModal] = useState<boolean>(false);
+  const [passcode, setPasscode] = useState<string>('');
+  const [passcodeError, setPasscodeError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showReturnCodeModal, setShowReturnCodeModal] = useState<boolean>(false);
+  const [returnCodeInput, setReturnCodeInput] = useState<string>('');
+  const [returnCodeError, setReturnCodeError] = useState<string | null>(null);
 
   // Load persistent states from localStorage or use initial mock data
   const [records, setRecords] = useState<REDCapRecord[]>([]);
@@ -138,10 +146,41 @@ export default function App() {
     setCurrentTab(tab);
   };
 
+  const handleVerifyPasscode = () => {
+    if (passcode.trim() === 'redcap2026') {
+      setAccessMode('portal');
+      setShowPasscodeModal(false);
+      setPasscode('');
+      setPasscodeError(null);
+    } else {
+      setPasscodeError('Chave de acesso inválida. Tente novamente.');
+    }
+  };
+
+  const handleVerifyReturnCode = () => {
+    const trimmed = returnCodeInput.trim().toUpperCase();
+    if (!trimmed) {
+      setReturnCodeError('Por favor, insira o seu código de retorno.');
+      return;
+    }
+
+    const matchingRecord = records.find(r => r.return_code === trimmed);
+    if (matchingRecord) {
+      setEditingRecordId(matchingRecord.record_id);
+      setAccessMode('public_form');
+      setFormSubmitted(false);
+      setShowReturnCodeModal(false);
+      setReturnCodeInput('');
+      setReturnCodeError(null);
+    } else {
+      setReturnCodeError('Código de retorno inválido ou rascunho correspondente não encontrado.');
+    }
+  };
+
   if (accessMode === null) {
     return (
-      <div className="min-h-screen bg-[#F1F5F9] flex items-center justify-center p-4 sm:p-6 font-sans">
-        <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col md:flex-row">
+      <div className="min-h-screen bg-[#F1F5F9] flex items-center justify-center p-4 sm:p-6 font-sans relative">
+        <div className="w-full max-w-4xl bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col md:flex-row relative z-10">
           
           {/* Left Hero Panel (Decorative / Info) */}
           <div className="w-full md:w-5/12 bg-[#1E293B] p-8 sm:p-12 flex flex-col justify-between text-white relative overflow-hidden">
@@ -177,8 +216,12 @@ export default function App() {
             <div className="grid grid-cols-1 gap-4">
               {/* Option 1: Project Coordinators */}
               <button
-                onClick={() => setAccessMode('portal')}
-                className="group flex items-start gap-4 p-5 rounded-2xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/10 text-left transition-all duration-300 hover:shadow-lg hover:shadow-slate-100"
+                onClick={() => {
+                  setShowPasscodeModal(true);
+                  setPasscodeError(null);
+                  setPasscode('');
+                }}
+                className="group flex items-start gap-4 p-5 rounded-2xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/10 text-left transition-all duration-300 hover:shadow-lg hover:shadow-slate-100 cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                   <Shield size={18} />
@@ -194,10 +237,11 @@ export default function App() {
               {/* Option 2: CPC Coordinators */}
               <button
                 onClick={() => {
+                  setEditingRecordId(null);
                   setAccessMode('public_form');
                   setFormSubmitted(false);
                 }}
-                className="group flex items-start gap-4 p-5 rounded-2xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/10 text-left transition-all duration-300 hover:shadow-lg hover:shadow-slate-100"
+                className="group flex items-start gap-4 p-5 rounded-2xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/10 text-left transition-all duration-300 hover:shadow-lg hover:shadow-slate-100 cursor-pointer"
               >
                 <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                   <ClipboardEdit size={18} />
@@ -205,7 +249,27 @@ export default function App() {
                 <div className="space-y-1">
                   <h4 className="text-sm font-black text-slate-800 group-hover:text-emerald-600 transition-colors">Cadastro do Centro de Pesquisa (Público)</h4>
                   <p className="text-[11px] text-slate-500 font-semibold leading-relaxed">
-                    Canal direto para coordenadores locais inserirem ou atualizarem as informações estruturais do seu CPC no banco de dados.
+                    Canal direto para coordenadores locais inserirem as informações estruturais do seu CPC no banco de dados.
+                  </p>
+                </div>
+              </button>
+
+              {/* Option 3: Resume Draft */}
+              <button
+                onClick={() => {
+                  setShowReturnCodeModal(true);
+                  setReturnCodeError(null);
+                  setReturnCodeInput('');
+                }}
+                className="group flex items-start gap-4 p-5 rounded-2xl border border-slate-200 hover:border-amber-500 hover:bg-amber-50/10 text-left transition-all duration-300 hover:shadow-lg hover:shadow-slate-100 cursor-pointer"
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                  <Unlock size={18} />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-sm font-black text-slate-800 group-hover:text-amber-600 transition-colors">Continuar Preenchimento (Retomar Rascunho)</h4>
+                  <p className="text-[11px] text-slate-500 font-semibold leading-relaxed">
+                    Possui um código de retorno (ex: RC-XXXXXX)? Recupere suas informações salvas anteriormente e continue de onde parou.
                   </p>
                 </div>
               </button>
@@ -213,6 +277,249 @@ export default function App() {
           </div>
 
         </div>
+
+        {/* Passcode Modal Overlay */}
+        <AnimatePresence>
+          {showPasscodeModal && (
+            <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => {
+                  setShowPasscodeModal(false);
+                  setPasscode('');
+                  setPasscodeError(null);
+                }}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
+              />
+
+              {/* Modal Box */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", duration: 0.4 }}
+                className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col relative z-10"
+              >
+                {/* Header */}
+                <div className="bg-slate-900 p-6 text-white relative">
+                  <div className="absolute right-4 top-4">
+                    <button 
+                      onClick={() => {
+                        setShowPasscodeModal(false);
+                        setPasscode('');
+                        setPasscodeError(null);
+                      }}
+                      className="text-slate-400 hover:text-white transition-colors cursor-pointer text-xs font-black"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                      <Lock size={18} className="text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm tracking-tight uppercase">Acesso Restrito</h4>
+                      <span className="text-[10px] text-slate-400 font-bold block mt-0.5">Coordenação do Projeto</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-6 sm:p-8 space-y-5">
+                  <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                    O Portal de Gestão contém dados consolidados e trilha de auditoria dos centros de pesquisa. Insira a chave de acesso autorizada para prosseguir.
+                  </p>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">
+                      Chave de Acesso (Passcode)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={passcode}
+                        onChange={(e) => {
+                          setPasscode(e.target.value);
+                          setPasscodeError(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleVerifyPasscode();
+                          }
+                        }}
+                        placeholder="Digite a chave de acesso..."
+                        className={`w-full bg-slate-50 border ${passcodeError ? 'border-red-300 focus:ring-red-500/20 focus:border-red-400' : 'border-slate-200 focus:ring-blue-500/20 focus:border-blue-400'} rounded-xl py-3.5 pl-4 pr-12 text-xs font-bold focus:outline-none focus:ring-4 transition-all`}
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                    {passcodeError && (
+                      <div className="flex items-center gap-1.5 text-red-600 text-[10px] font-bold mt-1.5">
+                        <AlertCircle size={12} />
+                        <span>{passcodeError}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Demo Hint Banner */}
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-3.5 flex items-start gap-2.5">
+                    <Unlock size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-black text-amber-800 uppercase tracking-wider block">Chave de Demonstração</span>
+                      <p className="text-[10px] text-amber-700 font-bold leading-normal">
+                        Utilize a chave <code className="bg-amber-100 px-1 py-0.5 rounded text-[11px] font-black font-mono select-all text-amber-900">redcap2026</code> para validar o acesso na demonstração.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <button
+                    onClick={handleVerifyPasscode}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-md shadow-blue-600/10 hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Shield size={14} />
+                    Autenticar Acesso
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Return Code Modal Overlay */}
+        <AnimatePresence>
+          {showReturnCodeModal && (
+            <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
+              {/* Backdrop */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => {
+                  setShowReturnCodeModal(false);
+                  setReturnCodeInput('');
+                  setReturnCodeError(null);
+                }}
+                className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
+              />
+
+              {/* Modal Box */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", duration: 0.4 }}
+                className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col relative z-10"
+              >
+                {/* Header */}
+                <div className="bg-slate-900 p-6 text-white relative">
+                  <div className="absolute right-4 top-4">
+                    <button 
+                      onClick={() => {
+                        setShowReturnCodeModal(false);
+                        setReturnCodeInput('');
+                        setReturnCodeError(null);
+                      }}
+                      className="text-slate-400 hover:text-white transition-colors cursor-pointer text-xs font-black"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/20">
+                      <Unlock size={18} className="text-white" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm tracking-tight uppercase">Retomar Rascunho</h4>
+                      <span className="text-[10px] text-slate-400 font-bold block mt-0.5">Recuperar Formulário Salvo</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Body */}
+                <div className="p-6 sm:p-8 space-y-5">
+                  <p className="text-xs text-slate-500 font-semibold leading-relaxed">
+                    Insira o código de retorno de 6 dígitos gerado quando você salvou seu rascunho (ex: RC-XXXXXX) para continuar preenchendo as informações de onde parou.
+                  </p>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider block">
+                      Código de Retorno (Return Code)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={returnCodeInput}
+                        onChange={(e) => {
+                          setReturnCodeInput(e.target.value.toUpperCase());
+                          setReturnCodeError(null);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleVerifyReturnCode();
+                          }
+                        }}
+                        placeholder="Ex: RC-A1B2C3"
+                        className={`w-full bg-slate-50 border ${returnCodeError ? 'border-red-300 focus:ring-red-500/20 focus:border-red-400' : 'border-slate-200 focus:ring-amber-500/20 focus:border-amber-400'} rounded-xl py-3.5 px-4 text-xs font-bold font-mono focus:outline-none focus:ring-4 transition-all`}
+                        autoFocus
+                      />
+                    </div>
+                    {returnCodeError && (
+                      <div className="flex items-center gap-1.5 text-red-600 text-[10px] font-bold mt-1.5">
+                        <AlertCircle size={12} />
+                        <span>{returnCodeError}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Demo Hint Banner of existing draft codes */}
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-3.5 space-y-1.5">
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider block">Rascunhos Disponíveis</span>
+                    <div className="text-[10px] text-slate-600 font-semibold leading-normal space-y-1">
+                      {records.filter(r => r.return_code).length > 0 ? (
+                        <div className="space-y-1 max-h-24 overflow-y-auto pr-1">
+                          {records.filter(r => r.return_code).map(r => (
+                            <div key={r.record_id} className="flex justify-between items-center bg-white p-1.5 rounded border border-slate-100">
+                              <span className="font-bold text-slate-700 truncate max-w-[180px]">{r.ii_1_1 || 'Rascunho Sem Nome'}</span>
+                              <code 
+                                onClick={() => setReturnCodeInput(r.return_code || '')}
+                                className="bg-amber-50 hover:bg-amber-100 px-1.5 py-0.5 rounded text-[10px] font-black font-mono text-amber-800 cursor-pointer transition-colors"
+                                title="Clique para usar"
+                              >
+                                {r.return_code}
+                              </code>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-slate-400 italic">Nenhum rascunho pendente salvo localmente no momento. Crie um novo cadastro e clique em "Salvar e retornar depois" para testar.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <button
+                    onClick={handleVerifyReturnCode}
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs py-3.5 rounded-xl transition-all shadow-md shadow-amber-500/10 hover:shadow-lg cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Unlock size={14} />
+                    Recuperar Rascunho
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     );
   }
@@ -301,10 +608,13 @@ export default function App() {
         <main className="flex-1 p-6 sm:p-8 overflow-y-auto w-full max-w-7xl mx-auto flex flex-col">
           <DataInsertion 
             user={currentUser}
-            editingRecordId={null}
+            editingRecordId={editingRecordId}
             records={records}
             onSaveRecord={handleSaveRecord}
-            onCancel={() => setAccessMode(null)}
+            onCancel={() => {
+              setAccessMode(null);
+              setEditingRecordId(null);
+            }}
           />
         </main>
 

@@ -24,6 +24,7 @@ export default function DataInsertion({ user, editingRecordId, records, onSaveRe
   const [loadingCEP, setLoadingCEP] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [returnCode, setReturnCode] = useState('');
+  const [copied, setCopied] = useState(false);
   
   // Local form state
   const [formData, setFormData] = useState<Partial<REDCapRecord>>({});
@@ -198,14 +199,16 @@ export default function DataInsertion({ user, editingRecordId, records, onSaveRe
   };
 
   const handleSaveAndReturnLater = () => {
-    // Generate simulated REDCap return code
-    const generatedCode = 'RC-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+    // Generate or reuse simulated REDCap return code
+    const generatedCode = formData.return_code || 'RC-' + Math.random().toString(36).substr(2, 6).toUpperCase();
     setReturnCode(generatedCode);
+    setCopied(false);
     setShowTutorial(true);
 
     // Save actual draft
     const updatedRecord = {
       ...formData,
+      return_code: generatedCode,
       updated_at: new Date().toISOString(),
       updated_by: user.email,
     } as REDCapRecord;
@@ -1152,18 +1155,49 @@ export default function DataInsertion({ user, editingRecordId, records, onSaveRe
       {/* Tutorial / Save draft Modal */}
       {showTutorial && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 text-center space-y-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 text-center space-y-5 border border-slate-100">
             <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
               <CheckCircle size={24} />
             </div>
-            <h3 className="text-lg font-black text-slate-800 font-display">Código de Retorno Gerado</h3>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Como salvar para continuar depois: use o código abaixo para recuperar suas informações inseridas neste formulário.
-            </p>
+            <div className="space-y-1">
+              <h3 className="text-base font-black text-slate-800 font-display">Rascunho Salvo com Sucesso!</h3>
+              <p className="text-xs text-slate-500 leading-relaxed font-semibold">
+                Suas informações foram guardadas no banco de dados. Utilize o código gerado abaixo para recuperar o preenchimento de onde parou.
+              </p>
+            </div>
 
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex justify-between items-center">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Código de Retorno</span>
-              <span className="font-mono font-black text-lg text-blue-600 select-all">{returnCode}</span>
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col gap-3">
+              <div className="flex justify-between items-center">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Código de Retorno (Return Code)</span>
+                {copied && (
+                  <span className="text-[10px] text-emerald-600 font-black uppercase tracking-wider animate-pulse">Copiado!</span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <span className="flex-1 bg-white border border-slate-200 rounded-xl py-2.5 px-3 font-mono font-black text-base text-blue-600 select-all flex items-center justify-center tracking-wider">
+                  {returnCode}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(returnCode);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-center shrink-0 shadow-sm"
+                  title="Copiar código"
+                >
+                  <ClipboardCopy size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Instruction about resuming */}
+            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-left space-y-1">
+              <span className="text-[9px] font-black text-amber-800 uppercase tracking-wider block">Como Retomar o Preenchimento?</span>
+              <p className="text-[10px] text-amber-700 font-semibold leading-relaxed">
+                Na página de entrada do portal, clique na opção <strong className="font-extrabold text-amber-900">"Continuar Preenchimento (Retomar Rascunho)"</strong> e insira esta chave.
+              </p>
             </div>
 
             <button
@@ -1171,7 +1205,7 @@ export default function DataInsertion({ user, editingRecordId, records, onSaveRe
                 setShowTutorial(false);
                 onCancel();
               }}
-              className="w-full bg-slate-900 hover:bg-slate-800 text-white py-2.5 rounded-xl text-xs font-bold shadow transition-all active:scale-95"
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-xl text-xs font-black shadow transition-all cursor-pointer"
             >
               Entendi, Fechar Formulário
             </button>

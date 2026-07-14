@@ -237,6 +237,7 @@ export interface REDCapRecord {
   updated_at: string;
   created_by: string;
   updated_by: string;
+  return_code?: string;
 }
 
 export interface REDCapInstrument {
