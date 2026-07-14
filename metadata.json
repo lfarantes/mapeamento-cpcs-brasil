@@ -1,0 +1,6 @@
+{
+  "name": "Portal REDCap CPC",
+  "description": "Sistema integrado de dashboard, inserção de dados em conformidade com dicionário REDCap, validação por CEP, auditoria completa e exportação em PDF.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
